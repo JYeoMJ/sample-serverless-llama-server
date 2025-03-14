@@ -1,0 +1,62 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  serverless-llama-cpp
+
+  Sample SAM Template for serverless-llama-cpp
+
+Resources:
+  S3MemRunLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: s3mem-run
+      Description: Layer containing s3mem-run binary for accessing S3 models and executing programs
+      ContentUri: s3mem-run/
+      CompatibleRuntimes:
+        - java21
+      RetentionPolicy: Retain
+    Metadata:
+      BuildMethod: makefile
+      BuildArchitecture: x86_64
+
+  LlamaCppServer:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: LlamaCppServer
+      Handler: run.sh
+      Runtime: java21
+      AutoPublishAlias: live
+      SnapStart:
+        ApplyOn: PublishedVersions
+      MemorySize: 10240
+      Timeout: 900
+      Tracing: Active
+      Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
+        Variables:
+          AWS_LWA_READINESS_CHECK_PATH: /health
+          AWS_LAMBDA_EXEC_WRAPPER: /opt/bootstrap
+          AWS_LWA_INVOKE_MODE: RESPONSE_STREAM
+          S3_BUCKET: genai-data-pdx
+          S3_KEY: DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf
+      Layers:
+        - !Sub arn:aws:lambda:${AWS::Region}:753240598075:layer:LambdaAdapterLayerX86:24
+        - !Ref S3MemRunLayer
+      FunctionUrlConfig:
+        AuthType: AWS_IAM
+        InvokeMode: RESPONSE_STREAM
+      Policies:
+        - S3ReadPolicy:
+            BucketName: genai-data-pdx
+    Metadata:
+      BuildMethod: makefile
+
+Outputs:
+  LlamaCppServer:
+    Description: "LlamaCppServer Function ARN"
+    Value: !GetAtt LlamaCppServer.Arn
+  LlamaCppServerIamRole:
+    Description: "Implicit IAM Role created for LlamaCppServer"
+    Value: !GetAtt LlamaCppServerRole.Arn
+  LlamaCppServerUrl:
+    Description: "Function URL for LlamaCppServer"
+    Value: !GetAtt LlamaCppServerUrl.FunctionUrl
