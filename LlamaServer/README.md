@@ -23,7 +23,7 @@ The server behavior can be customized by modifying the `run.sh` script. Key para
 
 - `-m {{memfd}}`: Uses the memory file descriptor created by s3mem-run
 - `-c 2048`: Sets the context window size
-- `-t 8`: Number of threads to use
-- `-fa`: Force using the mmap API
+- `-t 6`: Number of threads to use
+- `-fa`: Enable Flash Attention
 
 For more configuration options, refer to the [Llama.cpp server documentation](https://github.com/ggml-org/llama.cpp/blob/master/examples/server/README.md).
