@@ -1,6 +1,6 @@
-# Serverless Llama.cpp
+# Serverless Llama Server
 
-Run large language models on AWS Lambda using Llama.cpp and serverless architecture.
+Run large language models on AWS Lambda using [LLaMA.cpp HTTP Server](https://github.com/ggml-org/llama.cpp/blob/master/examples/server/README.md) and serverless architecture.
 
 ## Overview
 
@@ -203,13 +203,13 @@ For detailed documentation on all available llama-server parameters and configur
 ### View Lambda Logs
 
 ```bash
-sam logs -n LlamaCppServer --stack-name your-stack-name --tail
+sam logs -n LlamaServer --stack-name your-stack-name --tail
 ```
 
 ### Test Locally
 
 ```bash
-sam local invoke LlamaCppServer
+sam local invoke LlamaServer
 ```
 
 ## Cleanup

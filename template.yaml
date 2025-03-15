@@ -1,9 +1,9 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  serverless-llama-cpp
+  serverless-llama-server
 
-  Sample SAM Template for serverless-llama-cpp
+  Sample SAM Template for serverless-llama-server
 
 Parameters:
   ModelBucketName:
@@ -28,10 +28,10 @@ Resources:
       BuildMethod: makefile
       BuildArchitecture: x86_64
 
-  LlamaCppServer:
+  LlamaServer:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
-      CodeUri: LlamaCppServer
+      CodeUri: LlamaServer
       Handler: run.sh
       Runtime: java21
       AutoPublishAlias: live
@@ -60,12 +60,12 @@ Resources:
       BuildMethod: makefile
 
 Outputs:
-  LlamaCppServer:
-    Description: "LlamaCppServer Function ARN"
-    Value: !GetAtt LlamaCppServer.Arn
-  LlamaCppServerIamRole:
-    Description: "Implicit IAM Role created for LlamaCppServer"
-    Value: !GetAtt LlamaCppServerRole.Arn
-  LlamaCppServerUrl:
-    Description: "Function URL for LlamaCppServer"
-    Value: !GetAtt LlamaCppServerUrl.FunctionUrl
+  LlamaServer:
+    Description: "LlamaServer Function ARN"
+    Value: !GetAtt LlamaServer.Arn
+  LlamaServerIamRole:
+    Description: "Implicit IAM Role created for LlamaServer"
+    Value: !GetAtt LlamaServerRole.Arn
+  LlamaServerUrl:
+    Description: "Function URL for LlamaServer"
+    Value: !GetAtt LlamaServerUrl.FunctionUrl
