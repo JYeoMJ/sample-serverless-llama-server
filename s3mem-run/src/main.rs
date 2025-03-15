@@ -1,26 +1,28 @@
-use anyhow::{Context, Result};
-use aws_config::BehaviorVersion;
-use aws_sdk_s3::Client;
-use clap::Parser;
-use libc::{ftruncate, memfd_create};
-use std::env;
-use std::ffi::CString;
-use std::io::{Seek, SeekFrom, Write};
-use std::os::unix::io::FromRawFd;
-use std::os::unix::process::CommandExt;
-use std::path::PathBuf;
-use std::process::Command;
-use std::sync::Arc;
-use tokio::sync::Semaphore;
-use tracing::{debug, error, info, instrument, Level};
-use tracing_subscriber::{EnvFilter, FmtSubscriber};
+// Import required crates and modules
+use anyhow::{Context, Result};                // Error handling with context
+use aws_config::BehaviorVersion;              // AWS SDK configuration
+use aws_sdk_s3::Client;                       // AWS S3 client
+use clap::Parser;                             // Command-line argument parsing
+use libc::{ftruncate, memfd_create};          // Linux system calls for memory file operations
+use std::env;                                 // Environment variable access
+use std::ffi::CString;                        // C-compatible strings for FFI
+use std::io::{Seek, SeekFrom, Write};         // I/O operations
+use std::os::unix::io::FromRawFd;             // Unix-specific file descriptor handling
+use std::os::unix::process::CommandExt;       // Unix-specific process extensions
+use std::path::PathBuf;                       // Path manipulation
+use std::process::Command;                    // Process execution
+use std::sync::Arc;                           // Thread-safe reference counting
+use tokio::sync::Semaphore;                   // Async concurrency limiting
+use tracing::{debug, error, info, instrument, Level};  // Structured logging
+use tracing_subscriber::{EnvFilter, FmtSubscriber};    // Logging configuration
 
 // Default values that can be overridden based on file size
-const MIN_CHUNK_SIZE: i64 = 4 * 1024 * 1024; // 4MB minimum
-const MAX_CHUNK_SIZE: i64 = 128 * 1024 * 1024; // 128MB maximum
-const MIN_CONCURRENT_DOWNLOADS: usize = 4;
-const MAX_CONCURRENT_DOWNLOADS: usize = 16;
-const TARGET_CHUNKS_PER_FILE: i64 = 75; // Target ~75 chunks per file for balanced parallelism
+// These constants control the download behavior and are tuned for optimal performance
+const MIN_CHUNK_SIZE: i64 = 4 * 1024 * 1024;      // 4MB minimum chunk size
+const MAX_CHUNK_SIZE: i64 = 128 * 1024 * 1024;    // 128MB maximum chunk size
+const MIN_CONCURRENT_DOWNLOADS: usize = 4;         // Minimum number of parallel downloads
+const MAX_CONCURRENT_DOWNLOADS: usize = 16;        // Maximum number of parallel downloads
+const TARGET_CHUNKS_PER_FILE: i64 = 75;           // Target ~75 chunks per file for balanced parallelism
 
 #[derive(Parser, Debug)]
 #[command(name = "s3mem-run")]
@@ -35,6 +37,7 @@ struct Args {
     key: Option<String>,
 
     /// Placeholder for memfd (defaults to '{{memfd}}')
+    /// This string will be replaced with the actual memory file path in command arguments
     #[arg(long, env = "MEMFD_PLACEHOLDER", default_value = "{{memfd}}")]
     memfd_placeholder: String,
     
@@ -43,20 +46,25 @@ struct Args {
     log_level: Level,
 
     /// Program to execute and its arguments
+    /// The first argument is the program path, followed by its arguments
     #[arg(trailing_var_arg = true, required = true)]
     command: Vec<String>,
 }
 
 // Calculate optimal chunk size based on file size
+// This function determines the best chunk size for downloading based on the total file size
+// Larger files use larger chunks to reduce the number of S3 requests
 fn calculate_optimal_chunk_size(file_size: i64) -> i64 {
     // Target a reasonable number of chunks based on file size
     let ideal_chunk_size = file_size / TARGET_CHUNKS_PER_FILE;
     
-    // Clamp to our min/max boundaries
+    // Clamp to our min/max boundaries to ensure we don't have too small or too large chunks
     ideal_chunk_size.clamp(MIN_CHUNK_SIZE, MAX_CHUNK_SIZE)
 }
 
 // Calculate optimal concurrency based on file size
+// This function determines how many parallel downloads to use based on file size
+// Larger files benefit from more parallelism up to a point
 fn calculate_optimal_concurrency(file_size: i64) -> usize {
     // For smaller files, use fewer concurrent downloads
     // For larger files, scale up to the maximum
@@ -77,28 +85,41 @@ fn calculate_optimal_concurrency(file_size: i64) -> usize {
     concurrency
 }
 
+// MemFile represents a file that exists only in memory
+// This is the core data structure that allows us to avoid disk I/O
 struct MemFile {
-    file: std::fs::File,
-    fd: i32,
+    file: std::fs::File,  // Standard file handle for I/O operations
+    fd: i32,              // Raw file descriptor for passing to other processes
 }
 
 impl MemFile {
+    // Create a new memory-backed file using memfd_create
     fn new(name: &str) -> Result<Self> {
+        // Convert Rust string to C string for the system call
         let name = CString::new(name)?;
+        
+        // Create an in-memory file using the Linux-specific memfd_create syscall
+        // This creates a file that exists only in memory, not on disk
         let fd = unsafe { memfd_create(name.as_ptr(), 0) };
 
         if fd == -1 {
             return Err(std::io::Error::last_os_error()).context("Failed to create memfd");
         }
 
+        // Convert the raw file descriptor to a Rust File object for easier handling
         let file = unsafe { std::fs::File::from_raw_fd(fd) };
         Ok(MemFile { file, fd })
     }
 
+    // Write data at a specific offset in the memory file
+    // This is used to write downloaded chunks directly to their correct position
     fn write_at(&mut self, data: &[u8], offset: u64) -> Result<()> {
+        // Seek to the specified position in the file
         self.file
             .seek(SeekFrom::Start(offset))
             .context("Failed to seek in memfd")?;
+            
+        // Write the data at that position
         self.file
             .write_all(data)
             .context("Failed to write to memfd")?;
@@ -107,6 +128,8 @@ impl MemFile {
 }
 
 #[instrument(skip(client))]
+// Download a single chunk of the file from S3
+// This function is called in parallel for different chunks of the file
 async fn download_chunk(
     client: &Client,
     bucket: &str,
@@ -114,9 +137,11 @@ async fn download_chunk(
     start: i64,
     end: i64,
 ) -> Result<(Vec<u8>, u64)> {
+    // Format the byte range header for the S3 request
     let range = format!("bytes={}-{}", start, end);
     debug!(range, "Downloading chunk");
 
+    // Make the S3 GetObject request with the byte range
     let resp = client
         .get_object()
         .bucket(bucket)
@@ -126,20 +151,27 @@ async fn download_chunk(
         .await
         .context("Failed to get object from S3")?;
 
+    // Collect the streaming response body into a byte vector
     let data = resp
         .body
         .collect()
         .await
         .context("Failed to collect response body")?;
     
+    // Convert to a standard Vec<u8> and log the chunk size
     let bytes = data.to_vec();
     let chunk_size = bytes.len();
     debug!(bytes = chunk_size, offset = start, "Chunk downloaded successfully");
+    
+    // Return both the data and the offset where it should be written
     Ok((bytes, start as u64))
 }
 
 #[instrument(skip(client))]
+// Download a file from S3 in parallel chunks directly into memory
+// This is the main function that orchestrates the parallel download process
 async fn parallel_download_to_memfd(bucket: &str, key: &str, client: &Client) -> Result<MemFile> {
+    // First, get the object metadata to determine file size
     info!("Getting object metadata from S3");
     let head_object = client
         .head_object()
@@ -149,6 +181,7 @@ async fn parallel_download_to_memfd(bucket: &str, key: &str, client: &Client) ->
         .await
         .context("Failed to get object metadata from S3")?;
 
+    // Extract the total file size from the metadata
     let total_size = head_object
         .content_length
         .context("Content length not available")? as i64;
@@ -159,6 +192,7 @@ async fn parallel_download_to_memfd(bucket: &str, key: &str, client: &Client) ->
     // Calculate optimal concurrency based on file size
     let concurrent_downloads = calculate_optimal_concurrency(total_size);
     
+    // Log the download parameters for monitoring and debugging
     info!(
         file_size_bytes = total_size,
         file_size_mb = total_size / (1024 * 1024),
@@ -168,27 +202,38 @@ async fn parallel_download_to_memfd(bucket: &str, key: &str, client: &Client) ->
         "Download parameters calculated"
     );
 
+    // Create a memory file to hold the downloaded data
     debug!("Creating memory file");
     let mut memfile = MemFile::new("s3_file")?;
+    
+    // Pre-allocate the full file size in memory to avoid resizing during writes
     if unsafe { ftruncate(memfile.fd, total_size) } == -1 {
         return Err(std::io::Error::last_os_error()).context("Failed to set file size");
     }
 
+    // Create a semaphore to limit concurrent downloads
     let semaphore = Arc::new(Semaphore::new(concurrent_downloads));
     let mut tasks = Vec::new();
 
+    // Calculate chunk boundaries and spawn download tasks
     let mut start = 0i64;
     let total_chunks = (total_size + chunk_size - 1) / chunk_size;
     let mut chunk_count = 0;
     
     info!(total_chunks, "Starting parallel download");
     
+    // Spawn tasks for each chunk
     while start < total_size {
         chunk_count += 1;
+        // Calculate the end byte for this chunk (inclusive)
         let end = (start + chunk_size - 1).min(total_size - 1);
+        
+        // Clone references for the async task
         let client = client.clone();
         let bucket = bucket.to_string();
         let key = key.to_string();
+        
+        // Acquire a permit from the semaphore to limit concurrency
         let permit = semaphore.clone().acquire_owned().await?;
         
         debug!(
@@ -199,21 +244,25 @@ async fn parallel_download_to_memfd(bucket: &str, key: &str, client: &Client) ->
             "Scheduling chunk download"
         );
 
+        // Spawn an async task to download this chunk
         let task = tokio::spawn(async move {
+            // Download the chunk and release the semaphore permit when done
             let result = download_chunk(&client, &bucket, &key, start, end).await;
             drop(permit);
             result
         });
 
         tasks.push(task);
-        start = end + 1;
+        start = end + 1;  // Move to the next chunk
     }
 
     info!(total_chunks = tasks.len(), "All chunks scheduled, waiting for completion");
     
+    // Wait for all download tasks to complete and write their data to the memory file
     let mut completed_chunks = 0;
     for task in tasks {
         completed_chunks += 1;
+        // Await the task completion and extract the data and offset
         let (data, offset) = task
             .await
             .context("Task join failed")?
@@ -226,8 +275,10 @@ async fn parallel_download_to_memfd(bucket: &str, key: &str, client: &Client) ->
             "Writing chunk to memory file"
         );
         
+        // Write the chunk data to the memory file at the correct offset
         memfile.write_at(&data, offset)?;
         
+        // Log progress periodically
         if completed_chunks % 10 == 0 || completed_chunks == total_chunks {
             info!(
                 completed_chunks,
@@ -243,6 +294,8 @@ async fn parallel_download_to_memfd(bucket: &str, key: &str, client: &Client) ->
 }
 
 #[instrument(skip(client))]
+// Create a memory file descriptor, download the file, and execute the specified program
+// This is the main function that ties everything together
 async fn create_memfd_and_exec(
     bucket: &str,
     key: &str,
@@ -253,14 +306,19 @@ async fn create_memfd_and_exec(
 ) -> Result<()> {
     info!(bucket, key, program, "Starting download and execution process");
     
+    // Download the file from S3 into memory
     let memfile = parallel_download_to_memfd(bucket, key, client).await?;
+    
+    // Get the path to the memory file descriptor
+    // This is a special path in /proc that points to the memory file
     let memfd_path = format!("/proc/self/fd/{}", memfile.fd);
 
-    // Set the environment variable with memfd_path
+    // Set the environment variable with memfd_path for programs that might use it
     env::set_var("MEMFD_PATH", &memfd_path);
     debug!(memfd_path, "Set MEMFD_PATH environment variable");
 
-    // Replace placeholder with actual memfd path in arguments
+    // Replace placeholder with actual memfd path in all command arguments
+    // This allows the target program to access the memory file
     let final_args: Vec<String> = args
         .iter()
         .map(|arg| arg.replace(memfd_placeholder, &memfd_path))
@@ -272,20 +330,28 @@ async fn create_memfd_and_exec(
         "Preparing to execute program with memory file descriptor"
     );
 
+    // Prevent the memory file from being dropped when this function returns
+    // This ensures the file descriptor remains valid for the child process
     std::mem::forget(memfile);
+    
     info!("Executing program: {}", program);
 
+    // Create a new command to execute the target program
     let mut cmd = Command::new(program);
     cmd.args(final_args);
 
+    // Execute the command, replacing the current process
+    // This will only return if there's an error
     Err(cmd.exec().into())
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // Parse command line arguments
     let args = Args::parse();
     
-    // Initialize the tracing subscriber
+    // Initialize the tracing subscriber for structured logging
+    // This sets up the logging system with the specified log level
     let subscriber = FmtSubscriber::builder()
         .with_env_filter(EnvFilter::from_default_env())
         .with_max_level(args.log_level)
@@ -294,32 +360,38 @@ async fn main() -> Result<()> {
     tracing::subscriber::set_global_default(subscriber)
         .expect("Failed to set tracing subscriber");
     
+    // Log the start of the program with version information
     info!(
         version = env!("CARGO_PKG_VERSION"),
         "Starting s3mem-run"
     );
 
+    // Get the S3 bucket name from arguments or environment variables
     let bucket = args.bucket.ok_or_else(|| {
         error!("S3_BUCKET environment variable not set and --bucket not provided");
         anyhow::anyhow!("S3_BUCKET environment variable not set and --bucket not provided")
     })?;
 
+    // Get the S3 key from arguments or environment variables
     let key = args.key.ok_or_else(|| {
         error!("S3_KEY environment variable not set and --key not provided");
         anyhow::anyhow!("S3_KEY environment variable not set and --key not provided")
     })?;
 
+    // Get the program to execute (first element of command vector)
     let program = &args.command[0];
     let program_path = PathBuf::from(program);
 
+    // Verify that the program exists
     if !program_path.exists() {
         error!(program, "Program does not exist");
         return Err(anyhow::anyhow!("Program '{}' does not exist", program));
     }
 
-    // Get program arguments
+    // Get program arguments (everything after the program name)
     let program_args: Vec<String> = args.command[1..].to_vec();
 
+    // Log the configuration for debugging
     info!(
         bucket,
         key,
@@ -329,11 +401,13 @@ async fn main() -> Result<()> {
         "Configuration loaded"
     );
 
+    // Initialize the AWS S3 client
     debug!("Initializing AWS client");
     let config = aws_config::defaults(BehaviorVersion::latest()).load().await;
     let client = Client::new(&config);
     debug!("AWS client initialized");
 
+    // Download the file and execute the program
     create_memfd_and_exec(
         &bucket,
         &key,

@@ -258,7 +258,7 @@ def get_api_base() -> str:
     parser.add_argument('--api-base', help='API base URL')
     parser.add_argument('--temperature', type=float, default=0.6,
                        help='Sampling temperature (0.0-1.0)')
-    parser.add_argument('--max-tokens', type=int, default=8192,
+    parser.add_argument('--max-tokens', type=int, default=32768,
                        help='Maximum tokens to generate')
     args = parser.parse_args()
     
