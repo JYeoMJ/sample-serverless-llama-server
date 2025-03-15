@@ -14,26 +14,6 @@ This project demonstrates how to deploy and run Llama.cpp-based language models 
 - **Streaming Responses**: Support for streaming text generation
 - **Cost-Effective**: Pay only for the compute time you use
 
-## Recommended Models
-
-This project works well with a variety of GGUF models. Here are some recommended options:
-
-### DeepSeek-R1-Distill-Qwen-1.5B
-
-A highly efficient 1.5B parameter model that offers excellent performance in a serverless environment:
-- Great balance of quality and size
-- Optimized for instruction following
-- Works well with the 10GB Lambda configuration
-- [Model on Hugging Face](https://huggingface.co/unsloth/DeepSeek-R1-Distill-Qwen-1.5B-GGUF)
-
-### Other Good Options
-
-- **Qwen2.5-1.5B**: Another excellent small model with good performance
-- **Phi-3-mini-4k-instruct**: Microsoft's 3.8B parameter model with strong reasoning
-- **Mistral-7B-Instruct**: Larger model requiring more memory but offering higher quality
-
-For best results with the default 10GB Lambda configuration, we recommend using models in the 1.5B-7B parameter range with Q4_K_M or Q8_0 quantization.
-
 ## Architecture
 
 The application consists of these main components:
@@ -64,6 +44,53 @@ This project addresses two major challenges in serverless LLM deployment:
 - When the function is invoked, the snapshot is restored with the model already loaded in memory
 
 This innovative approach enables using SnapStart with models far larger than the 256MB package limit or 512MB `/tmp` directory limit, providing both fast startup times and support for larger models.
+
+## How It Works
+
+### s3mem-run + SnapStart: A Powerful Combination
+
+The key innovation in this project is the combination of `s3mem-run` and Lambda SnapStart to overcome fundamental limitations:
+
+1. **SnapStart Limitations Overcome**:
+   - SnapStart only supports ZIP packaging (256MB max)
+   - SnapStart functions are limited to 512MB `/tmp` storage
+   - SnapStart doesn't support 10GB `/tmp` or EFS attachments
+   - These limitations would normally make SnapStart unusable for LLMs
+
+2. **How the Solution Works**:
+   - During function initialization, `s3mem-run` downloads the model from S3 directly into memory
+   - The model is loaded into memory file descriptors using Linux's `memfd_create`
+   - SnapStart captures this entire memory state, including the loaded model
+   - When the function is invoked, the snapshot is restored with the model already in memory
+   - No disk I/O or model loading happens during invocation
+
+3. **Benefits**:
+   - **Ultra-fast Cold Starts**: Functions start in milliseconds instead of tens of seconds
+   - **Large Model Support**: Run models far larger than the 256MB package or 512MB `/tmp` limits
+   - **Cost Efficiency**: Reduced execution time means lower costs
+   - **Better User Experience**: Consistent, fast response times
+
+This innovative approach makes serverless LLMs practical by solving both the cold start problem and the model size limitations simultaneously.
+
+## Recommended Models
+
+This project works well with a variety of GGUF models. Here are some recommended options:
+
+### DeepSeek-R1-Distill-Qwen-1.5B
+
+A highly efficient 1.5B parameter model that offers excellent performance in a serverless environment:
+- Great balance of quality and size
+- Optimized for instruction following
+- Works well with the 10GB Lambda configuration
+- [Model on Hugging Face](https://huggingface.co/unsloth/DeepSeek-R1-Distill-Qwen-1.5B-GGUF)
+
+### Other Good Options
+
+- **Qwen2.5-1.5B**: Another excellent small model with good performance
+- **Phi-3-mini-4k-instruct**: Microsoft's 3.8B parameter model with strong reasoning
+- **Mistral-7B-Instruct**: Larger model requiring more memory but offering higher quality
+
+For best results with the default 10GB Lambda configuration, we recommend using models in the 1.5B-7B parameter range with Q4_K_M or Q8_0 quantization.
 
 ## Prerequisites
 
@@ -152,33 +179,6 @@ python client.py --api-base https://your-lambda-function-url
 ```
 
 For detailed instructions, examples, and advanced usage, see the [client README](client/README.md).
-
-## How It Works
-
-### s3mem-run + SnapStart: A Powerful Combination
-
-The key innovation in this project is the combination of `s3mem-run` and Lambda SnapStart to overcome fundamental limitations:
-
-1. **SnapStart Limitations Overcome**:
-   - SnapStart only supports ZIP packaging (256MB max)
-   - SnapStart functions are limited to 512MB `/tmp` storage
-   - SnapStart doesn't support 10GB `/tmp` or EFS attachments
-   - These limitations would normally make SnapStart unusable for LLMs
-
-2. **How the Solution Works**:
-   - During function initialization, `s3mem-run` downloads the model from S3 directly into memory
-   - The model is loaded into memory file descriptors using Linux's `memfd_create`
-   - SnapStart captures this entire memory state, including the loaded model
-   - When the function is invoked, the snapshot is restored with the model already in memory
-   - No disk I/O or model loading happens during invocation
-
-3. **Benefits**:
-   - **Ultra-fast Cold Starts**: Functions start in milliseconds instead of tens of seconds
-   - **Large Model Support**: Run models far larger than the 256MB package or 512MB `/tmp` limits
-   - **Cost Efficiency**: Reduced execution time means lower costs
-   - **Better User Experience**: Consistent, fast response times
-
-This innovative approach makes serverless LLMs practical by solving both the cold start problem and the model size limitations simultaneously.
 
 ## Customization
 
