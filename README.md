@@ -98,6 +98,7 @@ For best results with the default 10GB Lambda configuration, we recommend using 
 - [AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html)
 - [AWS CLI](https://aws.amazon.com/cli/) configured with appropriate permissions
 - [Docker](https://www.docker.com/products/docker-desktop) for local testing and building
+- [Rust toolchain](https://www.rust-lang.org/tools/install) for compiling the s3mem-run utility
 - Python 3.8+ for the client application
 
 ## Deployment
