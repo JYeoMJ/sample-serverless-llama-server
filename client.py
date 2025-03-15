@@ -306,23 +306,42 @@ def main():
             
         # Define a function to handle the prompt with Unicode characters
         def get_input():
-            # Use Unicode characters for a distinctive prompt that works with readline
-            print("\n➤ ", end="", flush=True)  # Unicode right-pointing triangle
+            """Get user input, supporting both single-line and multi-line input with delimiters."""
+            # Display primary prompt
+            print("\n➤ ", end="", flush=True)
             
-            # Inform user about multi-line input mode
-            print("(Type or paste your message. Press Ctrl+D on a new line to submit)")
+            # Read first line
+            first_line = input().strip()
             
-            lines = []
-            # Read lines until EOF (Ctrl+D)
-            while True:
-                try:
-                    line = input()
-                    lines.append(line)
-                except EOFError:  # Handle Ctrl+D to end input
+            # Check for multi-line delimiters
+            delimiters = ["EOF", "```"]
+            active_delimiter = None
+            
+            for delimiter in delimiters:
+                if first_line == delimiter:
+                    active_delimiter = delimiter
                     break
             
-            # Join all lines with newlines
-            return "\n".join(lines)
+            # If a delimiter was found, collect multi-line input
+            if active_delimiter:
+                lines = []
+                print(f"(Enter your multi-line text. Type '{active_delimiter}' on a new line when finished)")
+                
+                # Collect lines until the delimiter is encountered again
+                while True:
+                    try:
+                        line = input()
+                        if line.strip() == active_delimiter:
+                            break
+                        lines.append(line)
+                    except EOFError:
+                        # Also support Ctrl+D as an alternative way to end input
+                        break
+                
+                return "\n".join(lines)
+            else:
+                # Single line input
+                return first_line
         
         while True:
             # Get user input with history support using our custom function
