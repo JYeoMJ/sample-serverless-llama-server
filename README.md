@@ -107,30 +107,82 @@ aws lambda update-function-configuration \
 
 ## Using the Client
 
-The included Python client (`client.py`) provides an interactive chat interface:
+The project includes a Python client in the `client` directory that provides an interactive chat interface with several advanced features:
+
+### Client Features
+
+- Interactive chat interface with command history
+- Support for multi-line input with delimiters
+- Streaming responses with thinking animation
+- AWS SigV4 authentication for Lambda function URLs
+- Response interruption with Ctrl+C
+
+### Installation
 
 ```bash
+# Navigate to the client directory
+cd client
+
 # Set up a Python virtual environment
 python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
-# Run the client (set your Lambda function URL)
+# Install dependencies
+pip install -r requirements.txt
+```
+
+### Running the Client
+
+```bash
+# Set your Lambda function URL as an environment variable
 export CHAT_API_BASE=https://your-lambda-function-url
+
+# Run the client
 python client.py
 ```
 
-You can also specify the API base URL directly:
+You can also specify parameters directly:
 
 ```bash
-python client.py --api-base https://your-lambda-function-url
+python client.py --api-base https://your-lambda-function-url --temperature 0.7 --max-tokens 2048
 ```
 
 ### Client Commands
 
 - `/quit` - Exit the chat
 - `/new` - Start a new conversation
+- `Ctrl+C` - Interrupt current response
+- `Ctrl+C` twice - Exit the chat
 - Use ↑/↓ keys to navigate through history
+
+### Multi-line Input
+
+The client supports multi-line input with delimiters for code snippets or longer text:
+
+1. **Using EOF delimiter**:
+```
+➤ EOF
+(Enter your multi-line text. Type 'EOF' on a new line when finished)
+function calculateSum(a, b) {
+  return a + b;
+}
+
+console.log(calculateSum(5, 10));
+EOF
+```
+
+2. **Using triple backticks** (like in Markdown):
+```
+➤ ```
+(Enter your multi-line text. Type '```' on a new line when finished)
+def hello():
+    print("Hello, world!")
+    
+hello()
+```
+```
+
+For more detailed information about the client, see the [client README](client/README.md).
 
 ## How It Works
 
