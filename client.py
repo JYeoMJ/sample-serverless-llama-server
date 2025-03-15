@@ -307,14 +307,35 @@ def main():
         # Define a function to handle the prompt with Unicode characters
         def get_input():
             # Use Unicode characters for a distinctive prompt that works with readline
-            user_input = input("\n➤ ")  # Unicode right-pointing triangle
-            return user_input.strip()
+            print("\n➤ ", end="")  # Unicode right-pointing triangle
+            
+            # Collect lines until an empty line is entered
+            lines = []
+            while True:
+                try:
+                    line = input()
+                    if not line and not lines:  # Skip if first line is empty
+                        continue
+                    if not line:  # Empty line ends multi-line input
+                        break
+                    lines.append(line)
+                except EOFError:  # Handle Ctrl+D
+                    break
+            
+            # If no lines were entered, try single line input
+            if not lines:
+                return ""
+                
+            # Join all lines with newlines
+            return "\n".join(lines)
         
         while True:
             # Get user input with history support using our custom function
             try:
                 user_input = get_input()
-                readline.write_history_file(histfile)
+                if user_input:  # Only write non-empty inputs to history
+                    readline.add_history(user_input)
+                    readline.write_history_file(histfile)
             except KeyboardInterrupt:
                 print("\nChat ended by user. Goodbye!")
                 break
