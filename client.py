@@ -6,6 +6,7 @@ import readline
 import sys
 import time
 import threading
+import signal
 import boto3
 from botocore.auth import SigV4Auth
 from botocore.awsrequest import AWSRequest
@@ -68,6 +69,9 @@ class ChatClient:
         self.session = requests.Session()
         self.messages: List[Dict[str, str]] = []
         self.thinking = ThinkingIndicator()
+        self.interrupt_flag = False
+        self.exit_flag = False
+        self.last_interrupt_time = 0
         
         # Get AWS credentials if not provided
         if credentials is None:
@@ -124,6 +128,21 @@ class ChatClient:
             data=aws_request.data
         ).prepare()
     
+    def _signal_handler(self, sig, frame):
+        """Handle Ctrl+C (SIGINT) during response generation."""
+        current_time = time.time()
+        
+        # If this is the first interrupt or more than 1 second has passed since the last one
+        if self.last_interrupt_time == 0 or (current_time - self.last_interrupt_time) > 1:
+            self.interrupt_flag = True
+            self.last_interrupt_time = current_time
+            print("\n\n[Response interrupted. Press Ctrl+C again within 1 second to exit]")
+        else:
+            # This is a double interrupt within 1 second
+            self.exit_flag = True
+            print("\n\nExiting...")
+            sys.exit(0)
+    
     def send_message(self, message: str) -> Optional[str]:
         """Send a message to the LLM and get the response.
         
@@ -136,12 +155,21 @@ class ChatClient:
         # Add message to history
         self.messages.append({"role": "user", "content": message})
         
+        # Reset interrupt flags
+        self.interrupt_flag = False
+        self.last_interrupt_time = 0
+        
+        # Set up signal handler for Ctrl+C
+        original_handler = signal.getsignal(signal.SIGINT)
+        signal.signal(signal.SIGINT, self._signal_handler)
+        
         try:
             url = f"{self.api_base}{API_ENDPOINT}"
             body = {
                 "messages": self.messages,
                 "max_tokens": self.max_tokens,
-                "temperature": self.temperature
+                "temperature": self.temperature,
+                "stream": True
             }
             
             # Sign and prepare the request
@@ -162,6 +190,10 @@ class ChatClient:
             assistant_message = ""
             first_chunk = True
             for line in response.iter_lines():
+                # Check if user interrupted
+                if self.interrupt_flag:
+                    break
+                    
                 if line:
                     line = line.decode('utf-8')
                     if line == "data: [DONE]":
@@ -187,8 +219,11 @@ class ChatClient:
             
             print()  # Add a newline at the end
             
-            # Add successful response to history
+            # Add successful response to history (even if interrupted)
             if assistant_message:
+                if self.interrupt_flag:
+                    # Add a note that the response was interrupted
+                    assistant_message += " [Response interrupted by user]"
                 self.messages.append({"role": "assistant", "content": assistant_message})
             
             return assistant_message
@@ -198,9 +233,13 @@ class ChatClient:
             print(f"\nError making request: {str(e)}")
             return None
         except Exception as e:
-            self.thinking.stop()
-            print(f"\nUnexpected error: {str(e)}")
+            if not self.exit_flag:  # Don't show error if exiting intentionally
+                self.thinking.stop()
+                print(f"\nUnexpected error: {str(e)}")
             return None
+        finally:
+            # Restore original signal handler
+            signal.signal(signal.SIGINT, original_handler)
 
 def get_api_base() -> str:
     """Get the API base URL from command line arguments or environment variables.
@@ -253,6 +292,8 @@ def main():
         print("\nChat started. Available commands:")
         print("  /quit - Exit the chat")
         print("  /new  - Start a new conversation")
+        print("  Ctrl+C - Interrupt current response")
+        print("  Ctrl+C twice - Exit the chat")
         print("  Use ↑/↓ keys to navigate through history")
         
         # Configure readline for history
@@ -271,9 +312,13 @@ def main():
         
         while True:
             # Get user input with history support using our custom function
-            user_input = get_input()
-            readline.write_history_file(histfile)
-            
+            try:
+                user_input = get_input()
+                readline.write_history_file(histfile)
+            except KeyboardInterrupt:
+                print("\nChat ended by user. Goodbye!")
+                break
+                
             # Handle commands
             if user_input == '/quit':
                 print("\nChat ended. Goodbye!")

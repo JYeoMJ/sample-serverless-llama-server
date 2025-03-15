@@ -5,6 +5,15 @@ Description: >
 
   Sample SAM Template for serverless-llama-cpp
 
+Parameters:
+  ModelBucketName:
+    Type: String
+    Description: Name of the S3 bucket containing the model files
+  
+  ModelKey:
+    Type: String
+    Description: S3 key for the model file
+
 Resources:
   S3MemRunLayer:
     Type: AWS::Serverless::LayerVersion
@@ -36,8 +45,8 @@ Resources:
           AWS_LWA_READINESS_CHECK_PATH: /health
           AWS_LAMBDA_EXEC_WRAPPER: /opt/bootstrap
           AWS_LWA_INVOKE_MODE: RESPONSE_STREAM
-          S3_BUCKET: genai-data-pdx
-          S3_KEY: DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf
+          S3_BUCKET: !Ref ModelBucketName
+          S3_KEY: !Ref ModelKey
       Layers:
         - !Sub arn:aws:lambda:${AWS::Region}:753240598075:layer:LambdaAdapterLayerX86:24
         - !Ref S3MemRunLayer
@@ -46,7 +55,7 @@ Resources:
         InvokeMode: RESPONSE_STREAM
       Policies:
         - S3ReadPolicy:
-            BucketName: genai-data-pdx
+            BucketName: !Ref ModelBucketName
     Metadata:
       BuildMethod: makefile
 
