@@ -206,12 +206,6 @@ For detailed documentation on all available llama-server parameters and configur
 sam logs -n LlamaServer --stack-name your-stack-name --tail
 ```
 
-### Test Locally
-
-```bash
-sam local invoke LlamaServer
-```
-
 ## Cleanup
 
 To delete all resources created by this project:
