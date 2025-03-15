@@ -23,54 +23,55 @@ The application consists of these main components:
 3. **Lambda Web Adapter**: Handles HTTP requests and responses
 4. **Python Client**: Provides an easy way to interact with the deployed model
 
-### Solving Serverless LLM Challenges
+## How It Works: Solving Serverless LLM Challenges
 
-This project addresses two major challenges in serverless LLM deployment:
+This project addresses two major challenges in serverless LLM deployment through an innovative combination of `s3mem-run` and Lambda SnapStart:
 
-#### 1. Cold Start Performance
+### Challenge 1: Cold Start Performance
 
-**Challenge**: Lambda cold starts can cause significant delays when loading large models.
+**Problem**: Lambda cold starts can cause significant delays when loading large models, resulting in poor user experience.
 
-**Solution**: AWS Lambda SnapStart pre-initializes the Lambda execution environment and caches it, dramatically reducing cold start times. This project is configured to use SnapStart, allowing the Lambda function to start quickly even after being idle.
+**Solution - Lambda SnapStart**:
+- Pre-initializes the Lambda execution environment and caches it
+- Restores the cached snapshot on invocation instead of cold starting
+- Reduces cold start times from tens of seconds to milliseconds
+- Provides consistent, predictable response times
 
-#### 2. Large Model Loading with SnapStart Limitations
+### Challenge 2: SnapStart's Size Limitations
 
-**Challenge**: Lambda SnapStart only supports ZIP packaging (256MB max) and has a 512MB `/tmp` directory limit. It doesn't support 10GB `/tmp` or EFS attachments, making it seemingly impossible to use SnapStart with large ML models.
+**Problem**: Lambda SnapStart has strict limitations that would normally prevent its use with LLMs:
+- Only supports ZIP packaging (256MB max)
+- Limited to 512MB `/tmp` storage
+- Doesn't support 10GB `/tmp` or EFS attachments
 
-**Solution**: The custom `s3mem-run` utility combined with SnapStart:
+**Solution - s3mem-run**:
 - Downloads model files from S3 directly into memory during function initialization
 - Uses Linux's `memfd_create` to create memory-based file descriptors
+- Bypasses all filesystem limitations completely
 - The entire memory state, including the loaded model, is captured in the SnapStart snapshot
-- When the function is invoked, the snapshot is restored with the model already loaded in memory
+- When the function is invoked, the snapshot is restored with the model already in memory
+- No disk I/O or model loading happens during invocation
 
-This innovative approach enables using SnapStart with models far larger than the 256MB package limit or 512MB `/tmp` directory limit, providing both fast startup times and support for larger models.
+### The Combined Approach
 
-## How It Works
+The key innovation is how these technologies work together:
 
-### s3mem-run + SnapStart: A Powerful Combination
+1. **During Deployment**:
+   - The model is loaded from S3 directly into memory (not disk)
+   - SnapStart captures this memory state in a snapshot
 
-The key innovation in this project is the combination of `s3mem-run` and Lambda SnapStart to overcome fundamental limitations:
-
-1. **SnapStart Limitations Overcome**:
-   - SnapStart only supports ZIP packaging (256MB max)
-   - SnapStart functions are limited to 512MB `/tmp` storage
-   - SnapStart doesn't support 10GB `/tmp` or EFS attachments
-   - These limitations would normally make SnapStart unusable for LLMs
-
-2. **How the Solution Works**:
-   - During function initialization, `s3mem-run` downloads the model from S3 directly into memory
-   - The model is loaded into memory file descriptors using Linux's `memfd_create`
-   - SnapStart captures this entire memory state, including the loaded model
-   - When the function is invoked, the snapshot is restored with the model already in memory
-   - No disk I/O or model loading happens during invocation
+2. **During Invocation**:
+   - The snapshot with the pre-loaded model is quickly restored
+   - The function starts with the model already in memory
+   - No model loading or disk I/O is needed
 
 3. **Benefits**:
-   - **Ultra-fast Cold Starts**: Functions start in milliseconds instead of tens of seconds
+   - **Ultra-fast Cold Starts**: Functions start in milliseconds
    - **Large Model Support**: Run models far larger than the 256MB package or 512MB `/tmp` limits
    - **Cost Efficiency**: Reduced execution time means lower costs
    - **Better User Experience**: Consistent, fast response times
 
-This innovative approach makes serverless LLMs practical by solving both the cold start problem and the model size limitations simultaneously.
+This approach makes serverless LLMs practical by solving both the cold start problem and the model size limitations simultaneously.
 
 ## Recommended Models
 
