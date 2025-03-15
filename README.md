@@ -25,7 +25,7 @@ The application consists of these main components:
 
 ## How It Works: Solving Serverless LLM Challenges
 
-This project addresses two major challenges in serverless LLM deployment through an innovative combination of `s3mem-run` and Lambda SnapStart:
+This project addresses two major challenges in serverless LLM deployment through an innovative combination of `s3mem-run` and [Lambda SnapStart](https://docs.aws.amazon.com/lambda/latest/dg/snapstart.html):
 
 ### Challenge 1: Cold Start Performance
 
