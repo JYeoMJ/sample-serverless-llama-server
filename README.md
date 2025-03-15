@@ -14,6 +14,26 @@ This project demonstrates how to deploy and run Llama.cpp-based language models 
 - **Streaming Responses**: Support for streaming text generation
 - **Cost-Effective**: Pay only for the compute time you use
 
+## Recommended Models
+
+This project works well with a variety of GGUF models. Here are some recommended options:
+
+### DeepSeek-R1-Distill-Qwen-1.5B
+
+A highly efficient 1.5B parameter model that offers excellent performance in a serverless environment:
+- Great balance of quality and size
+- Optimized for instruction following
+- Works well with the 10GB Lambda configuration
+- [Model on Hugging Face](https://huggingface.co/unsloth/DeepSeek-R1-Distill-Qwen-1.5B-GGUF)
+
+### Other Good Options
+
+- **Qwen2.5-1.5B**: Another excellent small model with good performance
+- **Phi-3-mini-4k-instruct**: Microsoft's 3.8B parameter model with strong reasoning
+- **Mistral-7B-Instruct**: Larger model requiring more memory but offering higher quality
+
+For best results with the default 10GB Lambda configuration, we recommend using models in the 1.5B-7B parameter range with Q4_K_M or Q8_0 quantization.
+
 ## Architecture
 
 The application consists of these main components:
@@ -51,7 +71,25 @@ During the guided deployment, you'll be prompted for:
 - S3 bucket name for model storage
 - S3 key for the model file
 
-### 3. Upload Your Model to S3
+### 3. Download and Upload Your Model to S3
+
+#### Download the DeepSeek-R1-Distill-Qwen-1.5B Model
+
+```bash
+# Create a models directory if it doesn't exist
+mkdir -p models
+
+# Download the DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf model
+wget -O models/DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf https://huggingface.co/unsloth/DeepSeek-R1-Distill-Qwen-1.5B-GGUF/resolve/main/DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf
+```
+
+#### Upload the Model to S3
+
+```bash
+aws s3 cp models/DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf s3://your-bucket-name/DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf
+```
+
+You can also use any other GGUF model of your choice:
 
 ```bash
 aws s3 cp your-model.gguf s3://your-bucket-name/your-model.gguf
@@ -127,6 +165,8 @@ Modify the `run.sh` script to pass different parameters to the Llama.cpp server:
 #!/bin/bash
 exec bin/s3modelfd bin/llama-server -m {{memfd}} -c 2048 -t 8 -fa
 ```
+
+For detailed documentation on all available llama-server parameters and configuration options, refer to the [official llama-server documentation](https://github.com/ggml-org/llama.cpp/blob/master/examples/server/README.md).
 
 ## Troubleshooting
 
