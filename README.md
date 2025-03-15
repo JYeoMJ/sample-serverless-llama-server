@@ -19,7 +19,7 @@ This project demonstrates how to deploy and run Llama.cpp-based language models 
 The application consists of these main components:
 
 1. **Lambda Function**: Hosts the Llama.cpp server with 10GB memory allocation
-2. **S3 Model Loading**: Custom `s3mem-run` utility loads models from S3 directly into memory
+2. **S3 Model Loading**: Custom [`s3mem-run`](/s3mem-run/) utility loads models from S3 directly into memory
 3. **[Lambda Web Adapter](https://github.com/awslabs/aws-lambda-web-adapter)**: Handles HTTP requests and responses
 4. **Python Client**: Provides an easy way to interact with the deployed model
 

@@ -12,7 +12,7 @@ This directory contains the core components for running the Llama.cpp server on 
 
 When deployed, the Lambda function:
 
-1. Uses [s3mem-run](../s3mem-run/README.md) to load the model file directly from S3 into memory
+1. Uses [s3mem-run](../s3mem-run/) to load the model file directly from S3 into memory
 2. Starts the Llama.cpp server with the loaded model
 3. Handles HTTP requests via [Lambda Web Adapter](https://github.com/awslabs/aws-lambda-web-adapter)
 4. Provides an API compatible with standard LLM interfaces
