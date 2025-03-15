@@ -307,25 +307,20 @@ def main():
         # Define a function to handle the prompt with Unicode characters
         def get_input():
             # Use Unicode characters for a distinctive prompt that works with readline
-            print("\n➤ ", end="")  # Unicode right-pointing triangle
+            print("\n➤ ", end="", flush=True)  # Unicode right-pointing triangle
             
-            # Collect lines until an empty line is entered
+            # Inform user about multi-line input mode
+            print("(Type or paste your message. Press Ctrl+D on a new line to submit)")
+            
             lines = []
+            # Read lines until EOF (Ctrl+D)
             while True:
                 try:
                     line = input()
-                    if not line and not lines:  # Skip if first line is empty
-                        continue
-                    if not line:  # Empty line ends multi-line input
-                        break
                     lines.append(line)
-                except EOFError:  # Handle Ctrl+D
+                except EOFError:  # Handle Ctrl+D to end input
                     break
             
-            # If no lines were entered, try single line input
-            if not lines:
-                return ""
-                
             # Join all lines with newlines
             return "\n".join(lines)
         
