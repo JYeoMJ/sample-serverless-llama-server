@@ -43,6 +43,28 @@ The application consists of these main components:
 3. **Lambda Web Adapter**: Handles HTTP requests and responses
 4. **Python Client**: Provides an easy way to interact with the deployed model
 
+### Solving Serverless LLM Challenges
+
+This project addresses two major challenges in serverless LLM deployment:
+
+#### 1. Cold Start Performance
+
+**Challenge**: Lambda cold starts can cause significant delays when loading large models.
+
+**Solution**: AWS Lambda SnapStart pre-initializes the Lambda execution environment and caches it, dramatically reducing cold start times. This project is configured to use SnapStart, allowing the Lambda function to start quickly even after being idle.
+
+#### 2. Large Model Loading
+
+**Challenge**: Lambda's `/tmp` directory has limited space (10GB), making it difficult to load large models.
+
+**Solution**: The custom `s3mem-run` utility:
+- Downloads model files from S3 directly into memory using Linux's `memfd_create`
+- Bypasses the `/tmp` directory size limitations completely
+- Optimizes download performance through parallel chunked downloads
+- Passes the memory file descriptor to Llama.cpp server for immediate use
+
+This approach enables running models that would otherwise be too large for Lambda's filesystem constraints while maintaining excellent performance.
+
 ## Prerequisites
 
 - [AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html)
@@ -135,20 +157,25 @@ For detailed instructions, examples, and advanced usage, see the [client README]
 
 ### s3mem-run
 
-The `s3mem-run` utility is a key component that:
-1. Downloads model files from S3 directly into memory using Linux's `memfd_create`
-2. Passes the memory file descriptor to Llama.cpp server
-3. Optimizes download performance through parallel chunked downloads
+The `s3mem-run` utility is a key innovation that solves the model loading challenge:
 
-This approach avoids Lambda's `/tmp` directory size limitations and improves cold start times.
+1. **Direct Memory Loading**: Downloads model files from S3 directly into memory using Linux's `memfd_create`
+2. **Bypasses Storage Limitations**: Avoids Lambda's 10GB `/tmp` directory size limit
+3. **Parallel Downloads**: Optimizes performance through chunked, parallel downloading
+4. **Zero Disk I/O**: Passes the memory file descriptor directly to Llama.cpp server
 
-### Lambda Configuration
+This approach enables running models that would otherwise be too large for Lambda's filesystem constraints while maintaining excellent performance.
 
-The Lambda function is configured with:
-- 10GB memory allocation
-- 15-minute timeout
-- SnapStart for improved cold start performance
-- Lambda Web Adapter for HTTP request handling
+### Lambda SnapStart
+
+To address cold start latency, this project leverages AWS Lambda SnapStart:
+
+1. **Pre-initialization**: The Lambda environment is initialized and cached during deployment
+2. **Rapid Restoration**: On invocation, the cached snapshot is quickly restored
+3. **Reduced Cold Starts**: Cold start times are reduced from tens of seconds to milliseconds
+4. **Consistent Performance**: Provides more predictable response times for users
+
+The combination of `s3mem-run` and SnapStart creates a serverless LLM solution that is both fast and capable of running larger models than would otherwise be possible in a Lambda environment.
 
 ## Customization
 
