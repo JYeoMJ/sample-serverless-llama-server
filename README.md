@@ -107,82 +107,29 @@ aws lambda update-function-configuration \
 
 ## Using the Client
 
-The project includes a Python client in the `client` directory that provides an interactive chat interface with several advanced features:
+This project includes an interactive Python client in the `client` directory for communicating with your deployed LLM:
 
-### Client Features
+### Key Features
 
 - Interactive chat interface with command history
-- Support for multi-line input with delimiters
-- Streaming responses with thinking animation
+- Multi-line input support for code snippets and longer text
+- Streaming responses with interruption capability
 - AWS SigV4 authentication for Lambda function URLs
-- Response interruption with Ctrl+C
 
-### Installation
+### Quick Start
 
 ```bash
 # Navigate to the client directory
 cd client
 
-# Set up a Python virtual environment
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-
-# Install dependencies
+# Install dependencies (preferably in a virtual environment)
 pip install -r requirements.txt
+
+# Run the client with your Lambda function URL
+python client.py --api-base https://your-lambda-function-url
 ```
 
-### Running the Client
-
-```bash
-# Set your Lambda function URL as an environment variable
-export CHAT_API_BASE=https://your-lambda-function-url
-
-# Run the client
-python client.py
-```
-
-You can also specify parameters directly:
-
-```bash
-python client.py --api-base https://your-lambda-function-url --temperature 0.7 --max-tokens 2048
-```
-
-### Client Commands
-
-- `/quit` - Exit the chat
-- `/new` - Start a new conversation
-- `Ctrl+C` - Interrupt current response
-- `Ctrl+C` twice - Exit the chat
-- Use ↑/↓ keys to navigate through history
-
-### Multi-line Input
-
-The client supports multi-line input with delimiters for code snippets or longer text:
-
-1. **Using EOF delimiter**:
-```
-➤ EOF
-(Enter your multi-line text. Type 'EOF' on a new line when finished)
-function calculateSum(a, b) {
-  return a + b;
-}
-
-console.log(calculateSum(5, 10));
-EOF
-```
-
-2. **Using triple backticks** (like in Markdown):
-```
-➤ ```
-(Enter your multi-line text. Type '```' on a new line when finished)
-def hello():
-    print("Hello, world!")
-    
-hello()
-```
-```
-
-For more detailed information about the client, see the [client README](client/README.md).
+For detailed instructions, examples, and advanced usage, see the [client README](client/README.md).
 
 ## How It Works
 
