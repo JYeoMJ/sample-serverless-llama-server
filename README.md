@@ -53,17 +53,17 @@ This project addresses two major challenges in serverless LLM deployment:
 
 **Solution**: AWS Lambda SnapStart pre-initializes the Lambda execution environment and caches it, dramatically reducing cold start times. This project is configured to use SnapStart, allowing the Lambda function to start quickly even after being idle.
 
-#### 2. Large Model Loading
+#### 2. Large Model Loading with SnapStart Limitations
 
-**Challenge**: Lambda's `/tmp` directory has limited space (10GB), making it difficult to load large models.
+**Challenge**: Lambda SnapStart only supports ZIP packaging (256MB max) and has a 512MB `/tmp` directory limit. It doesn't support 10GB `/tmp` or EFS attachments, making it seemingly impossible to use SnapStart with large ML models.
 
-**Solution**: The custom `s3mem-run` utility:
-- Downloads model files from S3 directly into memory using Linux's `memfd_create`
-- Bypasses the `/tmp` directory size limitations completely
-- Optimizes download performance through parallel chunked downloads
-- Passes the memory file descriptor to Llama.cpp server for immediate use
+**Solution**: The custom `s3mem-run` utility combined with SnapStart:
+- Downloads model files from S3 directly into memory during function initialization
+- Uses Linux's `memfd_create` to create memory-based file descriptors
+- The entire memory state, including the loaded model, is captured in the SnapStart snapshot
+- When the function is invoked, the snapshot is restored with the model already loaded in memory
 
-This approach enables running models that would otherwise be too large for Lambda's filesystem constraints while maintaining excellent performance.
+This innovative approach enables using SnapStart with models far larger than the 256MB package limit or 512MB `/tmp` directory limit, providing both fast startup times and support for larger models.
 
 ## Prerequisites
 
@@ -155,27 +155,30 @@ For detailed instructions, examples, and advanced usage, see the [client README]
 
 ## How It Works
 
-### s3mem-run
+### s3mem-run + SnapStart: A Powerful Combination
 
-The `s3mem-run` utility is a key innovation that solves the model loading challenge:
+The key innovation in this project is the combination of `s3mem-run` and Lambda SnapStart to overcome fundamental limitations:
 
-1. **Direct Memory Loading**: Downloads model files from S3 directly into memory using Linux's `memfd_create`
-2. **Bypasses Storage Limitations**: Avoids Lambda's 10GB `/tmp` directory size limit
-3. **Parallel Downloads**: Optimizes performance through chunked, parallel downloading
-4. **Zero Disk I/O**: Passes the memory file descriptor directly to Llama.cpp server
+1. **SnapStart Limitations Overcome**:
+   - SnapStart only supports ZIP packaging (256MB max)
+   - SnapStart functions are limited to 512MB `/tmp` storage
+   - SnapStart doesn't support 10GB `/tmp` or EFS attachments
+   - These limitations would normally make SnapStart unusable for LLMs
 
-This approach enables running models that would otherwise be too large for Lambda's filesystem constraints while maintaining excellent performance.
+2. **How the Solution Works**:
+   - During function initialization, `s3mem-run` downloads the model from S3 directly into memory
+   - The model is loaded into memory file descriptors using Linux's `memfd_create`
+   - SnapStart captures this entire memory state, including the loaded model
+   - When the function is invoked, the snapshot is restored with the model already in memory
+   - No disk I/O or model loading happens during invocation
 
-### Lambda SnapStart
+3. **Benefits**:
+   - **Ultra-fast Cold Starts**: Functions start in milliseconds instead of tens of seconds
+   - **Large Model Support**: Run models far larger than the 256MB package or 512MB `/tmp` limits
+   - **Cost Efficiency**: Reduced execution time means lower costs
+   - **Better User Experience**: Consistent, fast response times
 
-To address cold start latency, this project leverages AWS Lambda SnapStart:
-
-1. **Pre-initialization**: The Lambda environment is initialized and cached during deployment
-2. **Rapid Restoration**: On invocation, the cached snapshot is quickly restored
-3. **Reduced Cold Starts**: Cold start times are reduced from tens of seconds to milliseconds
-4. **Consistent Performance**: Provides more predictable response times for users
-
-The combination of `s3mem-run` and SnapStart creates a serverless LLM solution that is both fast and capable of running larger models than would otherwise be possible in a Lambda environment.
+This innovative approach makes serverless LLMs practical by solving both the cold start problem and the model size limitations simultaneously.
 
 ## Customization
 
