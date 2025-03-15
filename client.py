@@ -295,6 +295,10 @@ def main():
         print("  Ctrl+C - Interrupt current response")
         print("  Ctrl+C twice - Exit the chat")
         print("  Use ↑/↓ keys to navigate through history")
+        print("\nMulti-line input:")
+        print("  Type 'EOF' and press Enter to start multi-line mode")
+        print("  Type '```' and press Enter to start multi-line mode")
+        print("  Then type your multi-line text and end with the same delimiter")
         
         # Configure readline for history
         histfile = ".chat_history"
