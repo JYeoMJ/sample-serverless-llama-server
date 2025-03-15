@@ -34,7 +34,7 @@ This project addresses two major challenges in serverless LLM deployment through
 **Solution - Lambda SnapStart**:
 - Pre-initializes the Lambda execution environment and caches it
 - Restores the cached snapshot on invocation instead of cold starting
-- Reduces cold start times from tens of seconds to milliseconds
+- Reduces cold start times from tens of seconds to single digit seconds
 - Provides consistent, predictable response times
 
 ### Challenge 2: SnapStart's Size Limitations
@@ -66,7 +66,7 @@ The key innovation is how these technologies work together:
    - No model loading or disk I/O is needed
 
 3. **Benefits**:
-   - **Ultra-fast Cold Starts**: Functions start in milliseconds
+   - **Ultra-fast Cold Starts**: Functions start in seconds
    - **Large Model Support**: Run models far larger than the 256MB package or 512MB `/tmp` limits
    - **Cost Efficiency**: Reduced execution time means lower costs
    - **Better User Experience**: Consistent, fast response times
