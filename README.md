@@ -1,4 +1,4 @@
-# Serverless LLM Lambda Deployment: DeepSeek R1, LLaMA Models on AWS Lambda with LLaMA.cpp HTTP Server
+# Serverless LLaMA Server: DeepSeek R1, LLaMA Models on AWS Lambda with LLaMA.cpp HTTP Server
 
 Run large language models including DeepSeek R1 Distilled models on AWS Lambda using [LLaMA.cpp HTTP Server](https://github.com/ggml-org/llama.cpp/blob/master/examples/server/README.md) and serverless architecture.
 
