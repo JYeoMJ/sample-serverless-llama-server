@@ -1,12 +1,12 @@
-# Serverless LLaMA Server: DeepSeek R1, LLaMA Models on AWS Lambda with LLaMA.cpp HTTP Server
+# Serverless LLM Inference: Deploy DeepSeek R1 & LLaMA Models on AWS Lambda with Ultra-Fast Cold Starts
 
 Run large language models including DeepSeek R1 Distilled models on AWS Lambda using [LLaMA.cpp HTTP Server](https://github.com/ggml-org/llama.cpp/blob/master/examples/server/README.md) and serverless architecture.
 
 ## Overview
 
-This project demonstrates how to deploy and run Llama.cpp compatable language models (such as DeepSeek R1 Distilled models) on AWS Lambda, providing a cost-effective, scalable solution for AI inference without managing infrastructure. It uses AWS Serverless Application Model (SAM) to deploy a Lambda function that runs the Llama.cpp server with models loaded directly from Amazon S3.
+This project demonstrates how to deploy and run Llama.cpp compatible language models (such as DeepSeek R1 Distilled models) on AWS Lambda, providing a cost-effective, scalable solution for AI inference without managing infrastructure. It uses AWS Serverless Application Model (SAM) to deploy a Lambda function that runs the Llama.cpp server with models loaded directly from Amazon S3.
 
-### Key Features
+## Key Features & Benefits
 
 - **Serverless LLM Inference**: Run large language models without managing servers
 - **Memory-Optimized Loading**: Load models directly from S3 into memory using `s3mem-run`
@@ -14,7 +14,7 @@ This project demonstrates how to deploy and run Llama.cpp compatable language mo
 - **Streaming Responses**: Support for streaming text generation
 - **Cost-Effective**: Pay only for the compute time you use
 
-## Architecture
+## Architecture & Components
 
 The application consists of these main components:
 
@@ -27,7 +27,7 @@ The application consists of these main components:
 
 This project addresses two major challenges in serverless LLM deployment through an innovative combination of `s3mem-run` and [Lambda SnapStart](https://docs.aws.amazon.com/lambda/latest/dg/snapstart.html):
 
-### Challenge 1: Cold Start Performance
+### Eliminating Cold Start Delays with Lambda SnapStart
 
 **Problem**: Lambda cold starts can cause significant delays when loading large models, resulting in poor user experience.
 
@@ -37,7 +37,7 @@ This project addresses two major challenges in serverless LLM deployment through
 - Reduces cold start times from tens of seconds to single digit seconds
 - Provides consistent, predictable response times
 
-### Challenge 2: SnapStart's Size Limitations
+### Overcoming Model Size Limitations with s3mem-run
 
 **Problem**: Lambda SnapStart has strict limitations that would normally prevent its use with LLMs:
 - Only supports ZIP packaging (256MB max)
@@ -52,7 +52,7 @@ This project addresses two major challenges in serverless LLM deployment through
 - When the function is invoked, the snapshot is restored with the model already in memory
 - No disk I/O or model loading happens during invocation
 
-### The Combined Approach
+### The Combined Approach: Fast, Scalable LLM Inference
 
 The key innovation is how these technologies work together:
 
@@ -73,11 +73,11 @@ The key innovation is how these technologies work together:
 
 This approach makes serverless LLMs practical by solving both the cold start problem and the model size limitations simultaneously.
 
-## Recommended Models
+## Supported Models
 
 This project works well with a variety of GGUF models. Here are some recommended options:
 
-### DeepSeek-R1-Distill-Qwen-1.5B
+### DeepSeek-R1-Distill-Qwen-1.5B (Recommended)
 
 A highly efficient 1.5B parameter model that offers excellent performance in a serverless environment:
 - Great balance of quality and size
@@ -85,7 +85,7 @@ A highly efficient 1.5B parameter model that offers excellent performance in a s
 - Works well with the 10GB Lambda configuration
 - [Model on Hugging Face](https://huggingface.co/unsloth/DeepSeek-R1-Distill-Qwen-1.5B-GGUF)
 
-### Other Good Options
+### Other Compatible Models
 
 - **Qwen2.5-1.5B**: Another excellent small model with good performance
 - **Phi-3-mini-4k-instruct**: Microsoft's 3.8B parameter model with strong reasoning
@@ -101,7 +101,7 @@ For best results with the default 10GB Lambda configuration, we recommend using 
 - [Rust toolchain](https://www.rust-lang.org/tools/install) for compiling the s3mem-run utility
 - Python 3.8+ for the client application
 
-## Deployment
+## Step-by-Step Deployment Guide
 
 ### 1. Download and Upload Your Model to S3
 
@@ -154,18 +154,18 @@ During the guided deployment, you'll be prompted for:
 - S3 bucket name for model storage (use the bucket name you created earlier)
 - S3 key for the model file (the path to your model in S3)
 
-## Interacting with Your Deployed Model
+## Using Your Serverless LLM
 
 This project includes an interactive Python client in the `client` directory for communicating with your deployed LLM:
 
-### Key Features
+### Client Setup & Configuration
 
 - Interactive chat interface with command history
 - Multi-line input support for code snippets and longer text
 - Streaming responses with interruption capability
 - AWS SigV4 authentication for Lambda function URLs
 
-### Quick Start
+### API Reference & Examples
 
 ```bash
 # Navigate to the client directory
@@ -180,13 +180,13 @@ python client.py --api-base https://your-lambda-function-url
 
 For detailed instructions, examples, and advanced usage, see the [client README](client/README.md).
 
-## Customization
+## Advanced Configuration
 
-### Using Different Models
+### Custom Model Parameters
 
 Update the `S3_BUCKET` and `S3_KEY` environment variables in the Lambda function to point to your model file.
 
-### Adjusting Model Parameters
+### Scaling & Performance Tuning
 
 Modify the `run.sh` script to pass different parameters to the Llama.cpp server:
 
@@ -197,7 +197,7 @@ exec bin/s3modelfd bin/llama-server -m {{memfd}} -c 2048 -t 8 -fa
 
 For detailed documentation on all available llama-server parameters and configuration options, refer to the [official llama-server documentation](https://github.com/ggml-org/llama.cpp/blob/master/examples/server/README.md).
 
-## Troubleshooting
+## Troubleshooting & FAQs
 
 ### View Lambda Logs
 
@@ -213,15 +213,13 @@ To delete all resources created by this project:
 sam delete --stack-name your-stack-name
 ```
 
-## Contributing
+## Contributing & Community
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-## License
+## License & Acknowledgments
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgments
 
 - [Llama.cpp](https://github.com/ggerganov/llama.cpp) for the efficient C++ implementation of LLM inference
 - AWS SAM for the serverless application framework
