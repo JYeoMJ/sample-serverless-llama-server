@@ -1,10 +1,10 @@
-# Serverless Llama Server
+# Serverless LlaMA Server
 
-Run large language models on AWS Lambda using [LLaMA.cpp HTTP Server](https://github.com/ggml-org/llama.cpp/blob/master/examples/server/README.md) and serverless architecture.
+Run large language models including DeepSeek R1 Distilled models on AWS Lambda using [LLaMA.cpp HTTP Server](https://github.com/ggml-org/llama.cpp/blob/master/examples/server/README.md) and serverless architecture.
 
 ## Overview
 
-This project demonstrates how to deploy and run Llama.cpp-based language models on AWS Lambda, providing a cost-effective, scalable solution for AI inference without managing infrastructure. It uses AWS Serverless Application Model (SAM) to deploy a Lambda function that runs the Llama.cpp server with models loaded directly from Amazon S3.
+This project demonstrates how to deploy and run Llama.cpp compatable language models (such as DeepSeek R1 Distilled models) on AWS Lambda, providing a cost-effective, scalable solution for AI inference without managing infrastructure. It uses AWS Serverless Application Model (SAM) to deploy a Lambda function that runs the Llama.cpp server with models loaded directly from Amazon S3.
 
 ### Key Features
 
