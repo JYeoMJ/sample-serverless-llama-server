@@ -103,26 +103,9 @@ For best results with the default 10GB Lambda configuration, we recommend using 
 
 ## Deployment
 
-### 1. Build the Application
+### 1. Download and Upload Your Model to S3
 
-```bash
-sam build
-```
-
-### 2. Deploy to AWS
-
-```bash
-sam deploy --guided
-```
-
-During the guided deployment, you'll be prompted for:
-- Stack name
-- AWS Region
-- Confirmation of IAM role creation
-- S3 bucket name for model storage
-- S3 key for the model file
-
-### 3. Download and Upload Your Model to S3
+First, you need to download a model and upload it to S3 before building and deploying the application.
 
 #### Download the DeepSeek-R1-Distill-Qwen-1.5B Model
 
@@ -136,7 +119,13 @@ wget -O models/DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf https://huggingface.co/
 
 #### Upload the Model to S3
 
+Create an S3 bucket and upload your model:
+
 ```bash
+# Create an S3 bucket (if you don't already have one)
+aws s3 mb s3://your-bucket-name
+
+# Upload the model to S3
 aws s3 cp models/DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf s3://your-bucket-name/DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf
 ```
 
@@ -146,17 +135,26 @@ You can also use any other GGUF model of your choice:
 aws s3 cp your-model.gguf s3://your-bucket-name/your-model.gguf
 ```
 
-### 4. Update Environment Variables
-
-If needed, update the Lambda function's environment variables to point to your model:
+### 2. Build the Application
 
 ```bash
-aws lambda update-function-configuration \
-  --function-name your-function-name \
-  --environment "Variables={S3_BUCKET=your-bucket-name,S3_KEY=your-model.gguf}"
+sam build
 ```
 
-## Using the Client
+### 3. Deploy to AWS
+
+```bash
+sam deploy --guided
+```
+
+During the guided deployment, you'll be prompted for:
+- Stack name
+- AWS Region
+- Confirmation of IAM role creation
+- S3 bucket name for model storage (use the bucket name you created earlier)
+- S3 key for the model file (the path to your model in S3)
+
+## Interacting with Your Deployed Model
 
 This project includes an interactive Python client in the `client` directory for communicating with your deployed LLM:
 
