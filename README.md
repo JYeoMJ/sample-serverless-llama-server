@@ -192,7 +192,7 @@ Modify the `run.sh` script to pass different parameters to the Llama.cpp server:
 
 ```bash
 #!/bin/bash
-exec bin/s3modelfd bin/llama-server -m {{memfd}} -c 2048 -t 8 -fa
+exec bin/s3mem-run bin/llama-server -m {{memfd}} -c 2048 -t 8 -fa
 ```
 
 For detailed documentation on all available llama-server parameters and configuration options, refer to the [official llama-server documentation](https://github.com/ggml-org/llama.cpp/blob/master/examples/server/README.md).
