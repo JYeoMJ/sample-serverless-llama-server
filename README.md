@@ -19,15 +19,15 @@ This project demonstrates how to deploy and run Llama.cpp compatible language mo
 The application consists of these main components:
 
 1. **Lambda Function**: Hosts the Llama.cpp server with 10GB memory allocation
-2. **S3 Model Loading**: Custom [`s3mem-run`](/s3mem-run/) utility loads models from S3 directly into memory
+2. **S3 Model Loading**: Custom `s3mem-run` utility loads models from S3 directly into memory
 3. **[Lambda Web Adapter](https://github.com/awslabs/aws-lambda-web-adapter)**: Handles HTTP requests and responses
 4. **Python Client**: Provides an easy way to interact with the deployed model
 
 ## How It Works: Solving Serverless LLM Challenges
 
-This project addresses two major challenges in serverless LLM deployment through an innovative combination of `s3mem-run` and [Lambda SnapStart](https://docs.aws.amazon.com/lambda/latest/dg/snapstart.html):
+This project addresses two major challenges in serverless LLM deployment through an innovative combination of `s3mem-run` and Lambda SnapStart:
 
-### Eliminating Cold Start Delays with Lambda SnapStart
+### Eliminating Cold Start Delays with [Lambda SnapStart](https://docs.aws.amazon.com/lambda/latest/dg/snapstart.html)
 
 **Problem**: Lambda cold starts can cause significant delays when loading large models, resulting in poor user experience.
 
@@ -37,7 +37,7 @@ This project addresses two major challenges in serverless LLM deployment through
 - Reduces cold start times from tens of seconds to single digit seconds
 - Provides consistent, predictable response times
 
-### Overcoming Model Size Limitations with s3mem-run
+### Overcoming Model Size Limitations with [s3mem-run](/s3mem-run/)
 
 **Problem**: Lambda SnapStart has strict limitations that would normally prevent its use with LLMs:
 - Only supports ZIP packaging (256MB max)
