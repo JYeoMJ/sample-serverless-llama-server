@@ -23,6 +23,27 @@ The application consists of these main components:
 3. **[Lambda Web Adapter](https://github.com/awslabs/aws-lambda-web-adapter)**: Handles HTTP requests and responses
 4. **Python Client**: Provides an easy way to interact with the deployed model
 
+```mermaid
+graph TB
+    Client[Client/User] -->|API Request| APIGW[Amazon API Gateway]
+    APIGW -->|Triggers| Lambda[AWS Lambda]
+    Lambda -->|Runs| LLMServer[LLaMA/DeepSeek Inference Server]
+    
+    subgraph "AWS Lambda Environment"
+        LLMServer -->|Uses| ModelWeights[Model Weights]
+        LLMServer -->|Optimized with| Quantization[Model Quantization]
+    end
+    
+    ModelStorage[Amazon S3] -->|Stores Models| ModelWeights
+    Lambda -->|Logs| CloudWatch[CloudWatch Logs]
+    
+    classDef aws fill:#FF9900,stroke:#232F3E,stroke-width:2px,color:white;
+    classDef client fill:#85B8CB,stroke:#232F3E,stroke-width:2px;
+    
+    class APIGW,Lambda,ModelStorage,CloudWatch aws;
+    class Client client;
+```
+
 ## How It Works: Solving Serverless LLM Challenges
 
 This project addresses two major challenges in serverless LLM deployment through an innovative combination of `s3mem-run` and Lambda SnapStart:
